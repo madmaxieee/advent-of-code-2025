@@ -1,15 +1,26 @@
+fn parse_instruction(instruction: &str) -> (i32, i32) {
+    let (dir_str, distance_str) = instruction.split_at(1);
+    let direction = match dir_str {
+        "L" => -1,
+        "R" => 1,
+        _ => panic!("Invalid direction, expected 'L' or 'R', got {}", &dir_str),
+    };
+    let distance: i32 = distance_str.parse().unwrap_or_else(|_| {
+        panic!(
+            "Failed to parse distance '{}' in instruction '{}'",
+            distance_str, instruction
+        )
+    });
+
+    (direction, distance)
+}
+
 pub fn part1(input: &str) -> String {
     let mut pos = 50;
     let mut answer = 0;
 
     for line in input.lines() {
-        let instruction = line.trim();
-        let direction = match &instruction[0..1] {
-            "L" => -1,
-            "R" => 1,
-            _ => unreachable!(),
-        };
-        let distance: i32 = instruction[1..].parse().unwrap();
+        let (direction, distance) = parse_instruction(line.trim());
         pos += direction * distance;
         pos %= 100;
         if pos == 0 {
@@ -25,25 +36,17 @@ pub fn part2(input: &str) -> String {
     let mut answer = 0;
 
     for line in input.lines() {
-        let instruction = line.trim();
-        let direction = match &instruction[0..1] {
-            "L" => -1,
-            "R" => 1,
-            _ => unreachable!(),
-        };
-
-        let distance: i32 = instruction[1..].parse().unwrap();
+        let (direction, distance) = parse_instruction(line.trim());
         answer += distance / 100;
-        let real_distance = distance % 100;
 
         let old_pos = pos;
-        pos += direction * real_distance;
+        pos += direction * (distance % 100);
 
-        if old_pos != 0 && !(1..=99).contains(&pos) {
+        if old_pos != 0 && (pos <= 0 || pos >= 100) {
             answer += 1;
         }
 
-        pos = (pos + 100) % 100;
+        pos = pos.rem_euclid(100)
     }
 
     answer.to_string()
