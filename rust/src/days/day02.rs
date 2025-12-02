@@ -1,10 +1,7 @@
 fn parse_range(s: &str) -> Option<(u64, u64)> {
-    let parts: Vec<&str> = s.split('-').collect();
-    if parts.len() != 2 {
-        return None;
-    }
-    let start = parts[0].parse::<u64>().ok()?;
-    let end = parts[1].parse::<u64>().ok()?;
+    let (start, end) = s.split_once('-')?;
+    let start = start.parse::<u64>().ok()?;
+    let end = end.parse::<u64>().ok()?;
     Some((start, end))
 }
 
