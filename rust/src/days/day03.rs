@@ -47,7 +47,7 @@ pub fn part2(input: &str) -> String {
                     skip_amount = i + 1;
                 }
             }
-            joltage += (max_digit as u64) * 10_u64.pow(offset.try_into().unwrap());
+            joltage += (max_digit as u64) * 10_u64.pow(offset as u32);
         }
         answer += joltage;
     }
