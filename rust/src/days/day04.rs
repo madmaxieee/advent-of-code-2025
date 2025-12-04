@@ -1,9 +1,15 @@
 use std::collections::BTreeSet;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum Cell {
     Empty,
     Paper,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Copy)]
+struct Coord {
+    row: i32,
+    col: i32,
 }
 
 type Cells = Vec<Vec<Cell>>;
@@ -31,12 +37,28 @@ impl Diagram {
         (self.cells.len(), self.cells[0].len())
     }
 
-    fn get(&self, c: &Coord) -> Cell {
-        self.cells[c.x as usize][c.y as usize].clone()
+    fn set_empty(&mut self, c: Coord) {
+        self.cells[c.row as usize][c.col as usize] = Cell::Empty;
     }
 
-    fn set_empty(&mut self, c: &Coord) {
-        self.cells[c.x as usize][c.y as usize] = Cell::Empty;
+    fn neighbors<'a>(&'a self, c: Coord) -> impl Iterator<Item = Cell> + 'a {
+        let (rows, cols) = self.dimensions();
+        let (r, k) = (c.row, c.col);
+
+        [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ]
+        .into_iter()
+        .map(move |(dx, dy)| (r + dx, k + dy))
+        .filter(move |&(nx, ny)| nx >= 0 && nx < rows as i32 && ny >= 0 && ny < cols as i32)
+        .map(|(x, y)| self.cells[x as usize][y as usize])
     }
 }
 
@@ -56,39 +78,6 @@ fn parse_diagram(input: &str) -> Diagram {
     Diagram { cells }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
-struct Coord {
-    x: i32,
-    y: i32,
-}
-
-fn get_adjacent(row: usize, col: usize, c: Coord) -> Vec<Coord> {
-    let mut result = vec![];
-
-    let row = row as i32;
-    let col = col as i32;
-
-    for (dx, dy) in [
-        (-1, -1),
-        (-1, 0),
-        (-1, 1),
-        (0, -1),
-        (0, 1),
-        (1, -1),
-        (1, 0),
-        (1, 1),
-    ] {
-        if (0..row).contains(&(c.x + dx)) && (0..col).contains(&(c.y + dy)) {
-            result.push(Coord {
-                x: c.x + dx,
-                y: c.y + dy,
-            });
-        }
-    }
-
-    result
-}
-
 pub fn part1(input: &str) -> String {
     let diagram = parse_diagram(input);
     let mut answer = 0;
@@ -100,21 +89,13 @@ pub fn part1(input: &str) -> String {
             match col {
                 Cell::Empty => {}
                 Cell::Paper => {
-                    let adjacent = get_adjacent(
-                        rows,
-                        cols,
-                        Coord {
-                            x: r as i32,
-                            y: c as i32,
-                        },
-                    );
-                    let n: u32 = adjacent
-                        .iter()
-                        .map(|coord| match diagram.get(coord) {
-                            Cell::Empty => 0,
-                            Cell::Paper => 1,
+                    let n = diagram
+                        .neighbors(Coord {
+                            row: r as i32,
+                            col: c as i32,
                         })
-                        .sum();
+                        .filter(|cell| matches!(cell, Cell::Paper))
+                        .count();
                     if n < 4 {
                         answer += 1;
                     }
@@ -140,8 +121,8 @@ pub fn part2(input: &str) -> String {
                 Cell::Empty => {}
                 Cell::Paper => {
                     all_paper_coords.insert(Coord {
-                        x: r as i32,
-                        y: c as i32,
+                        row: r as i32,
+                        col: c as i32,
                     });
                 }
             }
@@ -152,23 +133,15 @@ pub fn part2(input: &str) -> String {
         let mut to_remove: Vec<Coord> = vec![];
 
         for paper_coord in all_paper_coords.iter() {
-            let adjacent = get_adjacent(
-                rows,
-                cols,
-                Coord {
-                    x: paper_coord.x,
-                    y: paper_coord.y,
-                },
-            );
-            let n: u32 = adjacent
-                .iter()
-                .map(|coord| match diagram.get(coord) {
-                    Cell::Empty => 0,
-                    Cell::Paper => 1,
+            let n = diagram
+                .neighbors(Coord {
+                    row: paper_coord.row,
+                    col: paper_coord.col,
                 })
-                .sum();
+                .filter(|cell| matches!(cell, Cell::Paper))
+                .count();
             if n < 4 {
-                to_remove.push(paper_coord.clone());
+                to_remove.push(*paper_coord);
             }
         }
 
@@ -180,7 +153,7 @@ pub fn part2(input: &str) -> String {
 
         for coord in to_remove.iter() {
             all_paper_coords.remove(coord);
-            diagram.set_empty(coord);
+            diagram.set_empty(*coord);
         }
     }
 
@@ -190,31 +163,6 @@ pub fn part2(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_get_adjacent() {
-        assert_eq!(
-            get_adjacent(10, 10, Coord { x: 1, y: 1 }),
-            vec![
-                Coord { x: 0, y: 0 },
-                Coord { x: 0, y: 1 },
-                Coord { x: 0, y: 2 },
-                Coord { x: 1, y: 0 },
-                Coord { x: 1, y: 2 },
-                Coord { x: 2, y: 0 },
-                Coord { x: 2, y: 1 },
-                Coord { x: 2, y: 2 },
-            ]
-        );
-        assert_eq!(
-            get_adjacent(10, 10, Coord { x: 0, y: 0 }),
-            vec![
-                Coord { x: 0, y: 1 },
-                Coord { x: 1, y: 0 },
-                Coord { x: 1, y: 1 },
-            ]
-        );
-    }
 
     #[test]
     fn test_part1() {
