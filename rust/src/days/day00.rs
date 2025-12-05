@@ -1,8 +1,8 @@
-pub fn part1(_input: &str) -> String {
+pub fn part1(input: &str) -> String {
     "".into()
 }
 
-pub fn part2(_input: &str) -> String {
+pub fn part2(input: &str) -> String {
     "".into()
 }
 
