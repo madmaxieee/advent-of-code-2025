@@ -29,15 +29,29 @@ struct Problem {
     operation: Option<Operation>,
 }
 
-fn parse_problems_1(input: &str) -> Vec<Problem> {
-    let mut problems: Vec<Problem> =
-        Vec::with_capacity(input.lines().next().unwrap().split_whitespace().count());
-
-    for _ in 0..problems.capacity() {
-        problems.push(Problem {
+impl Problem {
+    fn new() -> Self {
+        Problem {
             numbers: Vec::new(),
             operation: None,
-        });
+        }
+    }
+
+    fn solve(&self) -> u64 {
+        match self.operation {
+            Some(Operation::Add) => self.numbers.iter().sum(),
+            Some(Operation::Multiply) => self.numbers.iter().product(),
+            None => panic!("No operation specified"),
+        }
+    }
+}
+
+fn parse_problems_1(input: &str) -> Vec<Problem> {
+    let num_problems = input.lines().next().unwrap().split_whitespace().count();
+    let mut problems: Vec<Problem> = Vec::with_capacity(num_problems);
+
+    for _ in 0..num_problems {
+        problems.push(Problem::new());
     }
 
     for line in input.lines() {
@@ -76,18 +90,18 @@ fn parse_problems_2(input: &str) -> Vec<Problem> {
     op_pos.push(last_line.len() + 1);
     let column_ranges: Vec<(usize, usize)> = op_pos.windows(2).map(|w| (w[0], w[1] - 2)).collect();
 
+    let lines_reversed: Vec<&str> = input.lines().rev().skip(1).collect();
+
     for (i, (start, end)) in column_ranges.iter().enumerate() {
         let mut numbers: Vec<u64> = Vec::new();
 
         for i in (*start..=*end).rev() {
             let mut n = 0;
             let mut scale = 1;
-            for line in input.lines().rev().skip(1) {
-                if let Some(c) = line.chars().nth(i).unwrap().to_digit(10) {
-                    while scale <= n {
-                        scale *= 10;
-                    }
+            for line in &lines_reversed {
+                if let Some(c) = (line.as_bytes()[i] as char).to_digit(10) {
                     n += c as u64 * scale;
+                    scale *= 10;
                 }
             }
             numbers.push(n);
@@ -103,11 +117,7 @@ pub fn part1(input: &str) -> String {
 
     problems
         .iter()
-        .map(|problem| match problem.operation {
-            Some(Operation::Add) => problem.numbers.iter().sum::<u64>(),
-            Some(Operation::Multiply) => problem.numbers.iter().product(),
-            None => panic!("No operation specified"),
-        })
+        .map(|problem| problem.solve())
         .sum::<u64>()
         .to_string()
 }
@@ -117,11 +127,7 @@ pub fn part2(input: &str) -> String {
 
     problems
         .iter()
-        .map(|problem| match problem.operation {
-            Some(Operation::Add) => problem.numbers.iter().sum::<u64>(),
-            Some(Operation::Multiply) => problem.numbers.iter().product(),
-            None => panic!("No operation specified"),
-        })
+        .map(|problem| problem.solve())
         .sum::<u64>()
         .to_string()
 }
