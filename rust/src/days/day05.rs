@@ -66,7 +66,8 @@ pub fn part2(input: &str) -> String {
 
     merged_ranges
         .iter()
-        .fold(0, |acc, (start, end)| acc + (end - start + 1))
+        .map(|(start, end)| end - start + 1)
+        .sum::<u64>()
         .to_string()
 }
 
