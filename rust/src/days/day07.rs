@@ -32,29 +32,47 @@ impl FromStr for Diagram {
     type Err = ();
 }
 
+impl Diagram {
+    fn find_splitter_below(&self, beam: (usize, usize)) -> Option<(usize, usize)> {
+        let (r, c) = beam;
+        match self.splitters[c].binary_search(&r) {
+            Ok(_) => {
+                panic!("Beam cannot be on a splitter at {:?}", beam);
+            }
+            Err(idx) => {
+                if idx < self.splitters[c].len() {
+                    Some((self.splitters[c][idx], c))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
 pub fn part1(input: &str) -> String {
     let diagram: Diagram = input.parse().unwrap();
     let mut beams = vec![diagram.beam_start];
     let mut splitter_hit: HashSet<(usize, usize)> = HashSet::new();
     let mut tested_beams: HashSet<(usize, usize)> = HashSet::new();
 
-    while let Some((r, c)) = beams.pop() {
-        if tested_beams.contains(&(r, c)) {
+    while let Some(beam) = beams.pop() {
+        if tested_beams.contains(&beam) {
             continue;
         }
-        for splitter_row in &diagram.splitters[c] {
-            if *splitter_row > r {
-                splitter_hit.insert((*splitter_row, c));
-                if c > 0 {
-                    beams.push((*splitter_row, c - 1));
-                }
-                if c + 1 < diagram.splitters.len() {
-                    beams.push((*splitter_row, c + 1));
-                }
-                break;
+
+        if let Some(splitter) = diagram.find_splitter_below(beam) {
+            splitter_hit.insert(splitter);
+            let (r, c) = splitter;
+            if c > 0 {
+                beams.push((r, c - 1));
+            }
+            if c + 1 < diagram.splitters.len() {
+                beams.push((r, c + 1));
             }
         }
-        tested_beams.insert((r, c));
+
+        tested_beams.insert(beam);
     }
 
     splitter_hit.len().to_string()
@@ -68,21 +86,23 @@ fn timelines(
     if let Some(count) = cache.get(&beam) {
         return *count;
     }
-    let (r, c) = beam;
-    for splitter_row in &diagram.splitters[c] {
-        if *splitter_row > r {
-            let mut count = 0;
-            if c > 0 {
-                count += timelines(cache, diagram, (*splitter_row, c - 1));
-            }
-            if c + 1 < diagram.splitters.len() {
-                count += timelines(cache, diagram, (*splitter_row, c + 1));
-            }
-            cache.insert(beam, count);
-            return count;
+
+    let count = if let Some((splitter_row, c)) = diagram.find_splitter_below(beam) {
+        let mut count = 0;
+        if c > 0 {
+            count += timelines(cache, diagram, (splitter_row, c - 1));
         }
-    }
-    1
+        if c + 1 < diagram.splitters.len() {
+            count += timelines(cache, diagram, (splitter_row, c + 1));
+        }
+        count
+    } else {
+        1
+    };
+
+    cache.insert(beam, count);
+
+    count
 }
 
 pub fn part2(input: &str) -> String {
