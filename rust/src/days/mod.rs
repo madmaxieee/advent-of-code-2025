@@ -4,6 +4,7 @@ mod day03;
 mod day04;
 mod day05;
 mod day06;
+mod day07;
 
 pub fn noop(_: &str) -> String {
     "Not implemented".to_string()
@@ -19,6 +20,7 @@ pub fn get_day(day: u8) -> (DayFunction, DayFunction) {
         4 => (day04::part1, day04::part2),
         5 => (day05::part1, day05::part2),
         6 => (day06::part1, day06::part2),
+        7 => (day07::part1, day07::part2),
         _ => (noop, noop),
     }
 }
