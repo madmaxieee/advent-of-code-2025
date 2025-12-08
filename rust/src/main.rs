@@ -1,4 +1,5 @@
 mod days;
+mod utils;
 
 use days::get_day;
 use std::env;
