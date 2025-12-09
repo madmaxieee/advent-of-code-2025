@@ -423,6 +423,56 @@ impl Iterator for BoxBorderIter {
     }
 }
 
+struct CoordinateCompressor {
+    x_decomp_map: HashMap<u64, u64>,
+    y_decomp_map: HashMap<u64, u64>,
+}
+
+impl CoordinateCompressor {
+    fn new() -> Self {
+        CoordinateCompressor {
+            x_decomp_map: HashMap::new(),
+            y_decomp_map: HashMap::new(),
+        }
+    }
+
+    fn compress_all(&mut self, tiles: &[Coordinate]) -> Vec<Coordinate> {
+        let xs = {
+            let mut v: Vec<u64> = tiles.iter().map(|c| c.x).collect();
+            v.sort_unstable();
+            v.dedup();
+            v
+        };
+        let ys = {
+            let mut v: Vec<u64> = tiles.iter().map(|c| c.y).collect();
+            v.sort_unstable();
+            v.dedup();
+            v
+        };
+
+        let x_comp_map: HashMap<u64, usize> = xs.iter().enumerate().map(|(i, &x)| (x, i)).collect();
+        let y_comp_map: HashMap<u64, usize> = ys.iter().enumerate().map(|(i, &y)| (y, i)).collect();
+
+        self.x_decomp_map = xs.iter().enumerate().map(|(i, &x)| (i as u64, x)).collect();
+        self.y_decomp_map = ys.iter().enumerate().map(|(i, &y)| (i as u64, y)).collect();
+
+        tiles
+            .iter()
+            .map(|c| Coordinate {
+                x: *x_comp_map.get(&c.x).unwrap() as u64,
+                y: *y_comp_map.get(&c.y).unwrap() as u64,
+            })
+            .collect()
+    }
+
+    fn decompress(&self, coord: &Coordinate) -> Coordinate {
+        Coordinate {
+            x: *self.x_decomp_map.get(&coord.x).unwrap(),
+            y: *self.y_decomp_map.get(&coord.y).unwrap(),
+        }
+    }
+}
+
 pub fn part1(input: &str) -> String {
     let tiles: Result<Vec<Coordinate>, ParseCoordinateError> = input
         .lines()
@@ -457,13 +507,18 @@ pub fn part2(input: &str) -> String {
         Err(_) => return "Error parsing input".into(),
     };
 
+    let mut compressor = CoordinateCompressor::new();
+    let tiles = compressor.compress_all(&tiles);
+
     let mut area_entries: Vec<AreaEntry> = Vec::new();
     for (i, a) in tiles.iter().enumerate() {
         for (j, b) in tiles.iter().enumerate().skip(i + 1) {
-            let dist = a.rectangle_area(b);
+            let decomp_a = compressor.decompress(a);
+            let decomp_b = compressor.decompress(b);
+            let area = decomp_a.rectangle_area(&decomp_b);
             area_entries.push(AreaEntry {
                 tile_ids: (i, j),
-                area: dist,
+                area,
             });
         }
     }
