@@ -1,5 +1,6 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap, HashSet},
     fmt::Debug,
     ops::BitXor,
     str::FromStr,
@@ -61,7 +62,7 @@ impl Debug for BitSet {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Counter {
     counts: Vec<u32>,
 }
@@ -178,26 +179,90 @@ impl Machine {
     }
 
     fn solve_part2(&self) -> usize {
-        let mut queue: VecDeque<(Counter, usize)> = VecDeque::new();
-        queue.push_back((Counter::new(self.light.size), 0));
+        #[derive(Debug, PartialEq, Eq)]
+        struct State {
+            cost: usize,
+            estimated_total_cost: usize,
+            counter: Counter,
+        }
 
-        while let Some((counter, presses)) = queue.pop_front() {
-            if counter
-                .counts
-                .iter()
-                .enumerate()
-                .any(|(i, &count)| count > self.joltage.get(i))
-            {
-                continue;
+        impl Ord for State {
+            fn cmp(&self, other: &Self) -> Ordering {
+                other
+                    .estimated_total_cost
+                    .cmp(&self.estimated_total_cost)
+                    .then_with(|| other.cost.cmp(&self.cost))
+            }
+        }
+
+        impl PartialOrd for State {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        let mut pq = BinaryHeap::new();
+        let mut visited = HashSet::new();
+
+        // Calculate max weight of any button for the heuristic
+        let max_button_weight = self
+            .button_indices
+            .iter()
+            .map(|btn| btn.len())
+            .max()
+            .unwrap_or(1);
+
+        let initial_counter = Counter::new(self.light.size);
+
+        // Calculate initial heuristic
+        let remaining: usize = self
+            .joltage
+            .counts
+            .iter()
+            .zip(initial_counter.counts.iter())
+            .map(|(target, current)| (target - current) as usize)
+            .sum();
+
+        let heuristic = remaining.div_ceil(max_button_weight);
+
+        pq.push(State {
+            cost: 0,
+            estimated_total_cost: heuristic,
+            counter: initial_counter.clone(),
+        });
+
+        visited.insert(initial_counter);
+
+        while let Some(State { cost, counter, .. }) = pq.pop() {
+            if counter == self.joltage {
+                return cost;
             }
 
             for btn in &self.button_indices {
                 let mut new_counter = counter.clone();
                 new_counter.increment(btn);
-                if new_counter == self.joltage {
-                    return presses + 1;
+
+                // Check constraints
+                let mut valid = true;
+                let mut remaining_sum = 0;
+
+                for (i, &count) in new_counter.counts.iter().enumerate() {
+                    let target = self.joltage.get(i);
+                    if count > target {
+                        valid = false;
+                        break;
+                    }
+                    remaining_sum += (target - count) as usize;
                 }
-                queue.push_back((new_counter, presses + 1));
+
+                if valid && visited.insert(new_counter.clone()) {
+                    let heuristic = remaining_sum.div_ceil(max_button_weight);
+                    pq.push(State {
+                        cost: cost + 1,
+                        estimated_total_cost: cost + 1 + heuristic,
+                        counter: new_counter,
+                    });
+                }
             }
         }
 
